@@ -332,26 +332,15 @@ void GameScene::DrawInfo(sf::RenderTexture & texture) {
   sf::Text text;
   text.setFont(font_);
   std::string str;
-  switch (game_.GetState()) {
-    case GameState::kRunning:
-      switch (game_.GetCurrentlyMoving()) {
-        case PieceColor::kWhite:
-          str = "White's move";
-          break;
-        case PieceColor::kBlack:
-          str = "Black's move";
-          break;
-      }
-      break;
-    case GameState::kDraw:
-      str = "Draw! (Lol how)";
-      break;
-    case GameState::kWhiteWon:
-      str = "White won!";
-      break;
-    case GameState::kBlackWon:
-      str = "Black won!";
-      break;
+  if (game_.IsRunning()) {
+    switch (game_.GetCurrentlyMoving()) {
+      case PieceColor::kWhite:
+        str = "White's move";
+        break;
+      case PieceColor::kBlack:
+        str = "Black's move";
+        break;
+    }
   }
   text.setString(str);
   text.setCharacterSize(50);
