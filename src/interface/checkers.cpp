@@ -3,6 +3,9 @@
 Move Checkers::Proceed() {
 
   Move move = ProceedWithIntermediateMove();
+
+  last_move_intermediate_ = false;
+
   currently_moving_ = currently_moving_ == PieceColor::kWhite ?
                       PieceColor::kBlack : PieceColor::kWhite;
 
@@ -19,7 +22,31 @@ Move Checkers::ProceedWithIntermediateMove() {
     throw GameIsOverException();
 
   Move move = ((currently_moving_ == PieceColor::kWhite) ? white_player_ : black_player_)->GetNextMove(board_);
-  board_.MakeTheMove(move);
+  board_.MakeMove(move);
+
+  if (last_move_intermediate_)
+    move_history_.back() += move;
+  else
+    move_history_.push_back(move);
+
+  last_move_intermediate_ = true;
+
+  return move;
+}
+
+Move Checkers::GoBack() {
+  if (move_history_.empty())
+    throw EmptyMoveHistoryException();
+
+  Move move = move_history_.back();
+  move_history_.pop_back();
+  board_.UndoMove(move);
+
+  if (!last_move_intermediate_)
+    currently_moving_ = currently_moving_ == PieceColor::kWhite ?
+                        PieceColor::kBlack : PieceColor::kWhite;
+
+  last_move_intermediate_ = false;
 
   return move;
 }

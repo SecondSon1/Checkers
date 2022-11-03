@@ -25,6 +25,13 @@ class InvalidConfigException : public std::exception {
   }
 };
 
+class EmptyMoveHistoryException : public std::exception {
+ public:
+  [[nodiscard]] const char* what() const noexcept override {
+    return "Nowhere to go back to (move history is empty)";
+  }
+};
+
 class PositionOutOfBoundsException : public std::exception {
  public:
   [[nodiscard]] const char* what() const noexcept override {

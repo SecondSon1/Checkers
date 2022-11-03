@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include "piece.hpp"
+#include "pieces.hpp"
 
 class Space {
  public:

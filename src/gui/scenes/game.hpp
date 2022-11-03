@@ -30,13 +30,13 @@ class GameScene : public Scene {
   void HandleLogic(sf::RenderWindow &window) override;
 
  private:
-  Position GetPositionFromMouse(const sf::RenderWindow & window);
+  Position GetPositionFromMouse(const sf::RenderWindow & window) const;
 
   void DrawBoard(sf::Texture & texture);
   void DrawPiece(sf::RenderTexture & texture, const std::shared_ptr<Piece>& piece, sf::Vector2f top_left_corner);
   void DrawPieces(sf::RenderTexture & texture);
   void DrawFloatingPiece(sf::RenderTexture & texture, sf::Vector2f relative_mouse_coords);
-  void DrawSquareInColor(sf::RenderTexture & texture, const Position & position, const sf::Color & color);
+  void DrawSquareInColor(sf::RenderTexture & texture, const Position & position, const sf::Color & color) const;
   void DrawPossibleMoves(sf::RenderTexture & texture);
   void DrawInfo(sf::RenderTexture & texture);
 

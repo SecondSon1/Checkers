@@ -75,7 +75,7 @@ void GameScene::Draw(const sf::RenderWindow & window, sf::RenderTexture & textur
 }
 
 
-Position GameScene::GetPositionFromMouse(const sf::RenderWindow & window) {
+Position GameScene::GetPositionFromMouse(const sf::RenderWindow & window) const {
   sf::Vector2i mouse_pos = sf::Mouse::getPosition(window);
   mouse_pos.x = static_cast<int32_t>(round(static_cast<float>(mouse_pos.x) - board_position_.x));
   mouse_pos.y = static_cast<int32_t>(round(static_cast<float>(mouse_pos.y) - board_position_.y));
@@ -88,11 +88,21 @@ Position GameScene::GetPositionFromMouse(const sf::RenderWindow & window) {
 
 
 void GameScene::HandleEvent(sf::RenderWindow & window, sf::Event & evt) {
-  if (evt.type == sf::Event::KeyPressed && evt.key.code == sf::Keyboard::Space) {
-    if ((game_.GetCurrentlyMoving() == PieceColor::kWhite && white_human_player_ == nullptr) ||
-        (game_.GetCurrentlyMoving() == PieceColor::kBlack && black_human_player_ == nullptr))
-      move_finished_ = true;
-    return;
+  if (evt.type == sf::Event::KeyPressed) {
+    if (evt.key.code == sf::Keyboard::Space) {
+      if ((game_.GetCurrentlyMoving() == PieceColor::kWhite && white_human_player_ == nullptr) ||
+          (game_.GetCurrentlyMoving() == PieceColor::kBlack && black_human_player_ == nullptr))
+        move_finished_ = true;
+      return;
+    } else if (evt.key.code == sf::Keyboard::Backspace) {
+      if (!game_.GetMoveHistory().empty()) {
+        game_.GoBack();
+        sequential_move_in_progress_ = false;
+        chosen_piece_ = nullptr;
+        possible_moves_.clear();
+        move_pool_ = game_.GetBoard().GetAllLegalMoves(game_.GetCurrentlyMoving());
+      }
+    }
   }
   if (evt.type != sf::Event::MouseButtonPressed && evt.type != sf::Event::MouseButtonReleased)
     return;
@@ -116,7 +126,7 @@ void GameScene::HandleEvent(sf::RenderWindow & window, sf::Event & evt) {
         return;
 
       chosen_piece_ = std::move(piece_ptr);
-      if (possible_moves_.empty())
+      if (!sequential_move_in_progress_)
         possible_moves_ = chosen_piece_->FilterMoves(move_pool_);
       floating_offset_ = sf::Vector2f(sf::Mouse::getPosition(window));
       floating_offset_ -= board_position_;
@@ -126,7 +136,8 @@ void GameScene::HandleEvent(sf::RenderWindow & window, sf::Event & evt) {
     } else if (evt.type == sf::Event::MouseButtonReleased) {
 
       std::vector<Move> possible_move_prefixes;
-      std::unique_ptr<Position> taken;
+      std::shared_ptr<Piece> taken;
+      bool promotion = false;
       for (const Move & move : possible_moves_) {
         if (move.GetIntermediatePositions().empty() && pos == move.GetEndPosition()) {
           std::shared_ptr<Human> & human_player_ptr = game_.GetCurrentlyMoving() == PieceColor::kWhite ?
@@ -139,11 +150,13 @@ void GameScene::HandleEvent(sf::RenderWindow & window, sf::Event & evt) {
         }
         if (!move.GetIntermediatePositions().empty() && pos == move.GetIntermediatePositions()[0]) {
           possible_move_prefixes.push_back(move);
-          assert(!move.GetTakenPositions().empty());
+          if (move.DoesPromotionHappen() && move.GetPromotionPosition() == pos)
+            promotion = true;
+          assert(!move.GetTakenPieces().empty());
           if (taken == nullptr)
-            taken = std::make_unique<Position>(move.GetTakenPositions()[0]);
+            taken = move.GetTakenPieces()[0];
           else
-            assert(*taken == move.GetTakenPositions()[0]);
+            assert(taken == move.GetTakenPieces()[0]);
         }
       }
 
@@ -160,8 +173,10 @@ void GameScene::HandleEvent(sf::RenderWindow & window, sf::Event & evt) {
 
       std::shared_ptr<Human> & human_player_ptr = game_.GetCurrentlyMoving() == PieceColor::kWhite ?
                                                   white_human_player_ : black_human_player_;
-      human_player_ptr->SetNextMove(
-          Move(chosen_piece_->GetPosition(), pos, { *taken }));
+      Move next_move(chosen_piece_->GetPosition(), pos, { taken });
+      if (promotion)
+        next_move.SetPromotionPosition(pos);
+      human_player_ptr->SetNextMove(next_move);
       game_.ProceedWithIntermediateMove();
       sequential_move_in_progress_ = true;
 
@@ -267,7 +282,9 @@ void GameScene::DrawFloatingPiece(sf::RenderTexture &texture, sf::Vector2f relat
 }
 
 
-void GameScene::DrawSquareInColor(sf::RenderTexture & texture, const Position & position, const sf::Color & color) {
+void GameScene::DrawSquareInColor(sf::RenderTexture & texture,
+                                  const Position & position,
+                                  const sf::Color & color) const {
   sf::Vector2f top_left_corner(
         static_cast<float>(position.GetY() * square_size_),
         static_cast<float>((7 - position.GetX()) * square_size_)

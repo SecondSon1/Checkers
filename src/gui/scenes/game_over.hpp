@@ -3,7 +3,7 @@
 #include <SFML/Graphics/Font.hpp>
 #include <SFML/Graphics/Text.hpp>
 #include "../scene.hpp"
-#include "../../interface/piece.hpp"
+#include "../../interface/pieces.hpp"
 #include "../window.hpp"
 
 class GameOverScene : public Scene {

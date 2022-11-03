@@ -7,8 +7,8 @@ class Board {
   explicit Board(std::string config);
 
  public:
-  void MakeTheMove(const Move & move);
-  // TODO: Make "undo move"
+  void MakeMove(const Move & move);
+  void UndoMove(const Move & move);
 
   Space operator [] (Position position) const noexcept {
     return board_[position.GetX()][position.GetY()];
@@ -22,8 +22,6 @@ class Board {
   Space & operator [] (Position position) noexcept {
     return board_[position.GetX()][position.GetY()];
   }
-
-  void TryPromoting(Position position);
 
  private:
   Space board_[8][8];
