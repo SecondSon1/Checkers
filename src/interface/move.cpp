@@ -44,13 +44,15 @@ Move operator + (Move lhs, const Move & rhs) {
   return lhs;
 }
 
-std::shared_ptr<Piece> Move::RemoveFirstStep() {
+Move Move::RemoveFirstStep() {
   assert(!intermediate_pos_.empty() && !taken_pieces_.empty());
+  Move removed(start_pos_, intermediate_pos_[0], { taken_pieces_[0] });
   start_pos_ = intermediate_pos_[0];
   intermediate_pos_.erase(intermediate_pos_.begin());
   taken_pieces_.erase(taken_pieces_.begin());
-  if (piece_before_promotion_ != nullptr && promotion_position_ == intermediate_pos_[0])
-    return std::move(piece_before_promotion_);
-  else
-    return nullptr;
+  if (piece_before_promotion_ != nullptr && promotion_position_ == intermediate_pos_[0]) {
+    removed.PromotionHappens(std::move(piece_before_promotion_),
+                             promotion_position_);
+  }
+  return removed;
 }

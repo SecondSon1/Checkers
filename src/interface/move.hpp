@@ -24,6 +24,7 @@ class Move {
   [[nodiscard]] bool DoesPromotionHappen() const noexcept { return piece_before_promotion_ != nullptr; }
   [[nodiscard]] std::shared_ptr<Piece> GetPieceBeforePromotion() const noexcept { return piece_before_promotion_; }
   [[nodiscard]] Position GetPromotionPosition() const noexcept { return promotion_position_; }
+
   void PromotionHappens(std::shared_ptr<Piece> piece_before_promotion, Position promotion_position) noexcept {
     piece_before_promotion_ = std::move(piece_before_promotion);
     promotion_position_ = promotion_position;
@@ -38,7 +39,7 @@ class Move {
 
   friend Move operator + (Move lhs, const Move & rhs);
   Move& operator += (const Move & rhs) { return *this = std::move(*this + rhs); }
-  std::shared_ptr<Piece> RemoveFirstStep();
+  Move RemoveFirstStep();
 
  private:
   Position start_pos_;

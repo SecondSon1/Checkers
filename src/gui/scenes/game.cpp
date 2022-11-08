@@ -137,7 +137,7 @@ void GameScene::HandleEvent(sf::RenderWindow & window, sf::Event & evt) {
 
       std::vector<Move> possible_move_prefixes;
       std::shared_ptr<Piece> taken;
-      std::shared_ptr<Piece> promoted = nullptr;
+      Move first_move(Position(0), Position(1));
       for (const Move & move : possible_moves_) {
         if (move.GetIntermediatePositions().empty() && pos == move.GetEndPosition()) {
           std::shared_ptr<Human> & human_player_ptr = game_.GetCurrentlyMoving() == PieceColor::kWhite ?
@@ -165,16 +165,13 @@ void GameScene::HandleEvent(sf::RenderWindow & window, sf::Event & evt) {
       while (!possible_move_prefixes.empty()) {
         Move move = std::move(possible_move_prefixes.back());
         possible_move_prefixes.pop_back();
-        promoted = move.RemoveFirstStep();
+        first_move = std::move(move.RemoveFirstStep());
         possible_moves_.push_back(move);
       }
 
       std::shared_ptr<Human> & human_player_ptr = game_.GetCurrentlyMoving() == PieceColor::kWhite ?
                                                   white_human_player_ : black_human_player_;
-      Move next_move(chosen_piece_->GetPosition(), pos, { taken });
-      if (promoted != nullptr)
-        next_move.PromotionHappens(promoted, pos);
-      human_player_ptr->SetNextMove(next_move);
+      human_player_ptr->SetNextMove(first_move);
       game_.ProceedWithIntermediateMove();
       sequential_move_in_progress_ = true;
 
