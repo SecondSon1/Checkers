@@ -4,7 +4,7 @@
 Move::Move(Position start_pos, std::initializer_list<Position> intermediate_pos,
            Position end_pos, std::initializer_list<std::shared_ptr<Piece>> taken)
            : start_pos_(start_pos), intermediate_pos_(intermediate_pos), end_pos_(end_pos), taken_pieces_(taken),
-             promotion_happens_(false), promotion_position_(0) {
+             piece_before_promotion_(nullptr), promotion_position_(0) {
   if (intermediate_pos_.empty()) {
     if (start_pos_ == end_pos_)
       throw EmptyMoveException();
@@ -33,7 +33,24 @@ Move operator + (Move lhs, const Move & rhs) {
   lhs.taken_pieces_.reserve(lhs.taken_pieces_.size() + rhs.taken_pieces_.size());
   lhs.taken_pieces_.insert(lhs.taken_pieces_.end(),
                            rhs.taken_pieces_.begin(), rhs.taken_pieces_.end());
-  if (!lhs.promotion_happens_ && rhs.promotion_happens_)
+
+  if (lhs.DoesPromotionHappen() && rhs.DoesPromotionHappen())
+    assert(false);
+
+  if (!lhs.DoesPromotionHappen() && rhs.DoesPromotionHappen()) {
+    lhs.piece_before_promotion_ = rhs.piece_before_promotion_;
     lhs.promotion_position_ = rhs.promotion_position_;
+  }
   return lhs;
+}
+
+std::shared_ptr<Piece> Move::RemoveFirstStep() {
+  assert(!intermediate_pos_.empty() && !taken_pieces_.empty());
+  start_pos_ = intermediate_pos_[0];
+  intermediate_pos_.erase(intermediate_pos_.begin());
+  taken_pieces_.erase(taken_pieces_.begin());
+  if (piece_before_promotion_ != nullptr && promotion_position_ == intermediate_pos_[0])
+    return std::move(piece_before_promotion_);
+  else
+    return nullptr;
 }

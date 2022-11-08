@@ -8,10 +8,7 @@ class CalculatingBot : public Bot {
   CalculatingBot(PieceColor color)
       : Bot(color), rng_(2281337), uid_(0, std::numeric_limits<int32_t>::max()) {}
 
-  [[nodiscard]] Move GetNextMove(const Board & board) noexcept override {
-    std::vector<Move> all_moves = board.GetAllLegalMoves(GetColor());
-    return all_moves[uid_(rng_) % all_moves.size()];
-  }
+  [[nodiscard]] Move GetNextMove(const Board & board) noexcept override;
 
  private:
   std::mt19937 rng_;

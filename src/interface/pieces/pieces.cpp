@@ -10,8 +10,7 @@ void KingMoves(std::vector<Move> & path,
                Position position,
                const Board & board,
                std::vector<std::vector<bool>> & taken,
-               const Position & starting_position,
-               const PieceColor & starting_color) {
+               const std::shared_ptr<Piece> & starting_piece) {
 
   bool taken_at_least_one = false;
 
@@ -22,8 +21,9 @@ void KingMoves(std::vector<Move> & path,
         Position current_position(position.GetX() + delta_x[d] * len, position.GetY() + delta_y[d] * len);
 
         if (board[current_position].IsOccupied() &&
-            !taken[current_position.GetX()][current_position.GetY()]) {
-          if (nearest == position && board[current_position].GetPiece()->GetColor() != starting_color) {
+            (!taken[current_position.GetX()][current_position.GetY()] &&
+                      current_position != starting_piece->GetPosition())) {
+          if (nearest == position && board[current_position].GetPiece()->GetColor() != starting_piece->GetColor()) {
             nearest = current_position;
             continue;
           } else
@@ -41,7 +41,7 @@ void KingMoves(std::vector<Move> & path,
           taken[nearest.GetX()][nearest.GetY()] = true;
           path.push_back(Move(position, current_position, { board[nearest].GetPiece() }));
 
-          KingMoves(path, paths, current_position, board, taken, starting_position, starting_color);
+          KingMoves(path, paths, current_position, board, taken, starting_piece);
 
           path.pop_back();
           taken[nearest.GetX()][nearest.GetY()] = false;
@@ -61,8 +61,7 @@ std::vector<Move> King::GetMoves(const Board & board) const noexcept {
   std::vector<Move> temp_path;
   std::vector<std::vector<bool>> taken(8, std::vector<bool>(8));
   std::vector<std::vector<Move>> paths;
-  KingMoves(temp_path, paths, GetPosition(), board, taken,
-            GetPosition(), GetColor());
+  KingMoves(temp_path, paths, GetPosition(), board, taken, board[GetPosition()].GetPiece());
   for (std::vector<Move> & path : paths) {
     for (size_t index = 1; index < path.size(); ++index) {
       path[0] += path[index];
@@ -84,8 +83,7 @@ void ManTakes(std::vector<Move> & path,
               Position position,
               const Board & board,
               std::vector<std::vector<bool>> & taken,
-              const Position & starting_position,
-              const PieceColor & starting_color) {
+              const std::shared_ptr<Piece> & starting_piece) {
 
   auto current_x = static_cast<int32_t>(position.GetX());
   auto current_y = static_cast<int32_t>(position.GetY());
@@ -98,23 +96,23 @@ void ManTakes(std::vector<Move> & path,
 
       if (board[middle_position].IsOccupied()) {
         std::shared_ptr<Piece> piece_ptr = board[middle_position].GetPiece();
-        if (piece_ptr->GetColor() == starting_color ||
+        if (piece_ptr->GetColor() == starting_piece->GetColor() ||
             taken[middle_position.GetX()][middle_position.GetY()])
           continue;
 
         Position last_position(current_x + delta_x[d] * 2, current_y + delta_y[d] * 2);
-        if (board[last_position].IsOccupied() && starting_position != last_position)
+        if (board[last_position].IsOccupied() && starting_piece->GetPosition() != last_position)
           continue;
 
         taken_at_least_one = true;
         taken[middle_position.GetX()][middle_position.GetY()] = true;
         path.push_back(Move(position, last_position, { board[middle_position].GetPiece() }));
 
-        if (PromotionHappens(starting_color, last_position)) {
-          path.back().SetPromotionPosition(last_position);
-          KingMoves(path, paths, last_position, board, taken, starting_position, starting_color);
+        if (PromotionHappens(starting_piece->GetColor(), last_position)) {
+          path.back().PromotionHappens(starting_piece, last_position);
+          KingMoves(path, paths, last_position, board, taken, starting_piece);
         } else {
-          ManTakes(path, paths, last_position, board, taken, starting_position, starting_color);
+          ManTakes(path, paths, last_position, board, taken, starting_piece);
         }
 
         path.pop_back();
@@ -139,7 +137,9 @@ std::vector<Move> Man::GetMoves(const Board & board) const noexcept {
       if (board[move_pos].IsEmpty()) {
         result.emplace_back(GetPosition(), move_pos);
         if (PromotionHappens(GetColor(), move_pos))
-          result.back().SetPromotionPosition(move_pos);
+          result.back().PromotionHappens(
+                board[GetPosition()].GetPiece(), move_pos
+              );
       }
     } catch (const PositionOutOfBoundsException & e) {}
   }
@@ -147,8 +147,7 @@ std::vector<Move> Man::GetMoves(const Board & board) const noexcept {
   std::vector<Move> temp_path;
   std::vector<std::vector<bool>> taken(8, std::vector<bool>(8));
   std::vector<std::vector<Move>> paths;
-  ManTakes(temp_path, paths, GetPosition(), board, taken,
-           GetPosition(), GetColor());
+  ManTakes(temp_path, paths, GetPosition(), board, taken, board[GetPosition()].GetPiece());
   for (std::vector<Move> & path : paths) {
     for (size_t index = 1; index < path.size(); ++index) {
       path[0] += path[index];

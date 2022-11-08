@@ -27,6 +27,9 @@ Board::Board(std::string config) {
 
 void Board::MakeMove(const Move & move) {
   std::shared_ptr<Piece> piece_ptr = (*this)[move.GetStartPosition()].GetPiece();
+  if (move.DoesPromotionHappen()) {
+    assert(move.GetPieceBeforePromotion() == piece_ptr);
+  }
   piece_ptr->MoveTo(move.GetEndPosition());
 
   (*this)[move.GetStartPosition()].Clear();
@@ -34,17 +37,17 @@ void Board::MakeMove(const Move & move) {
   for (const std::shared_ptr<Piece> & taken : move.GetTakenPieces())
     (*this)[taken->GetPosition()].Clear();
 
-  (*this)[move.GetEndPosition()].Set(piece_ptr);
-
-  if (move.DoesPromotionHappen())
-    (*this)[move.GetEndPosition()] = Space(
-        std::make_shared<King>(piece_ptr->GetColor(), piece_ptr->GetPosition())
-    );
+  (*this)[move.GetEndPosition()].Set(move.DoesPromotionHappen() ?
+          std::make_shared<King>(piece_ptr->GetColor(), piece_ptr->GetPosition()) : piece_ptr);
 }
 
 
 void Board::UndoMove(const Move & move) {
   std::shared_ptr<Piece> piece_ptr = (*this)[move.GetEndPosition()].GetPiece();
+
+  if (move.DoesPromotionHappen())
+    piece_ptr = move.GetPieceBeforePromotion();
+
   piece_ptr->MoveTo(move.GetStartPosition());
 
   (*this)[move.GetEndPosition()].Clear();
@@ -53,11 +56,6 @@ void Board::UndoMove(const Move & move) {
     (*this)[taken->GetPosition()].Set(taken);
 
   (*this)[move.GetStartPosition()].Set(piece_ptr);
-
-  if (move.DoesPromotionHappen())
-    (*this)[move.GetStartPosition()] = Space(
-        std::make_shared<Man>(piece_ptr->GetColor(), piece_ptr->GetPosition())
-    );
 }
 
 
@@ -65,10 +63,10 @@ bool Board::HasSomeoneWon() const {
   size_t white_count = 0;
   size_t black_count = 0;
 
-  for (size_t i = 0; i < 8; ++i) {
-    for (size_t j = 0; j < 8; ++j) {
-      if (board_[i][j].IsEmpty()) continue;
-      if (board_[i][j].GetPiece()->GetColor() == PieceColor::kWhite)
+  for (const auto & rank : board_) {
+    for (const auto & file : rank) {
+      if (file.IsEmpty()) continue;
+      if (file.GetPiece()->GetColor() == PieceColor::kWhite)
         white_count++;
       else
         black_count++;
