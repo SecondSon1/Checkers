@@ -1,9 +1,7 @@
 #include "calculating_bot.hpp"
 
-PieceColor current_color;
-PieceColor colors[2];
 
-bool MoveComparison(const Move & lhs, const Move & rhs) {
+bool CalculatingBot::MoveComparison(const Move & lhs, const Move & rhs, PieceColor color) {
   if (lhs.DoesPromotionHappen() && !rhs.DoesPromotionHappen())
     return true;
   size_t left_taken = lhs.GetTakenPieces().size();
@@ -12,16 +10,16 @@ bool MoveComparison(const Move & lhs, const Move & rhs) {
     return left_taken < right_taken;
 
   int left_x = lhs.GetEndPosition().GetX();
-  int relative_left_x = current_color == PieceColor::kWhite ? left_x : 7 - left_x;
+  int relative_left_x = color == PieceColor::kWhite ? left_x : 7 - left_x;
 
   int right_x = rhs.GetEndPosition().GetX();
-  int relative_right_x = current_color == PieceColor::kWhite ? right_x : 7 - right_x;
+  int relative_right_x = color == PieceColor::kWhite ? right_x : 7 - right_x;
 
   return relative_left_x > relative_right_x;
 }
 
-int Evaluate(Board & board, int current_color_index, int alpha, int beta, int depth) {
-  std::vector<Move> moves = board.GetAllLegalMoves(colors[current_color_index]);
+int32_t CalculatingBot::Evaluate(Board & board, int32_t current_color_index, int32_t alpha, int32_t beta, int32_t depth) {
+  std::vector<Move> moves = board.GetAllLegalMoves(colors_[current_color_index]);
 
   if (moves.empty())
     return -1e9;
@@ -33,15 +31,17 @@ int Evaluate(Board & board, int current_color_index, int alpha, int beta, int de
       Position pos(index);
       if (((const Board &) board)[pos].IsOccupied()) {
         int cost = ((const Board &) board)[pos].GetPiece()->GetType() == PieceType::kKing ? 4 : 1;
-        total[((const Board &) board)[pos].GetPiece()->GetColor() == colors[1]] += cost;
+        total[((const Board &) board)[pos].GetPiece()->GetColor() == colors_[1]] += cost;
       }
     }
 
     return total[current_color_index] - total[current_color_index ^ 1];
   }
 
-  current_color = colors[current_color_index];
-  std::sort(moves.begin(), moves.end(), MoveComparison);
+  std::sort(moves.begin(), moves.end(),
+            [this, current_color_index](const Move & lhs, const Move & rhs) {
+    return MoveComparison(lhs, rhs, colors_[current_color_index]);
+  });
 
   for (const Move & move : moves) {
     board.MakeMove(move);
@@ -66,8 +66,8 @@ int Evaluate(Board & board, int current_color_index, int alpha, int beta, int de
 Move CalculatingBot::GetNextMove(const Board & const_board) noexcept {
   Board board(const_board);
 
-  colors[0] = GetColor();
-  colors[1] = GetColor() == PieceColor::kWhite ? PieceColor::kBlack : PieceColor::kWhite;
+  colors_[0] = GetColor();
+  colors_[1] = GetColor() == PieceColor::kWhite ? PieceColor::kBlack : PieceColor::kWhite;
 
   int alpha = -1e9;
   int beta = 1e9;

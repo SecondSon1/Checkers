@@ -1,16 +1,20 @@
 #pragma once
 
 #include "../bot.hpp"
-#include <random>
 
 class CalculatingBot : public Bot {
  public:
   CalculatingBot(PieceColor color)
-      : Bot(color), rng_(2281337), uid_(0, std::numeric_limits<int32_t>::max()) {}
+      : Bot(color) {}
 
   [[nodiscard]] Move GetNextMove(const Board & board) noexcept override;
 
+ public:
+  static bool MoveComparison(const Move & lhs, const Move & rhs, PieceColor color);
+
  private:
-  std::mt19937 rng_;
-  std::uniform_int_distribution<> uid_;
+  int32_t Evaluate(Board & board, int32_t current_color_index, int32_t alpha, int32_t beta, int32_t depth);
+
+ private:
+  PieceColor colors_[2];
 };

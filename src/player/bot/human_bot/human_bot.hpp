@@ -6,14 +6,15 @@
 class HumanBot : public Bot {
  public:
   HumanBot(PieceColor color)
-      : Bot(color), rng_(1810), uid_(0, std::numeric_limits<int32_t>::max()) {}
+      : Bot(color), rng_(std::random_device{}()) {}
 
-  [[nodiscard]] Move GetNextMove(const Board & board) noexcept override {
-    std::vector<Move> all_moves = board.GetAllLegalMoves(GetColor());
-    return all_moves[uid_(rng_) % all_moves.size()];
-  }
+  [[nodiscard]] Move GetNextMove(const Board & board) noexcept override;
+
+
+ private:
+  int32_t Evaluate(Board & board, int32_t current_color_index, int32_t alpha, int32_t beta, int32_t depth);
 
  private:
   std::mt19937 rng_;
-  std::uniform_int_distribution<> uid_;
+  PieceColor colors_[2];
 };

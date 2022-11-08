@@ -218,7 +218,7 @@ void GameScene::HandleLogic(sf::RenderWindow & window) {
 
     game_.Proceed();
 
-    {
+    if (finished) {
       std::lock_guard<std::mutex> animation_guard(animation_mutex_);
       animated_piece_ = nullptr;
     }
