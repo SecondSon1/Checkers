@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cmath>
 
+
 void GameScene::Init() {
   // Upmost 215 px - top padding + move indicator + maybe time
   board_size_ = std::min(GetWindowPtr()->GetWidth(),
@@ -27,15 +28,6 @@ void GameScene::Init() {
                               static_cast<float>(GetWindowPtr()->GetHeight() - board_size_ - 15));
   info_position_ = sf::Vector2f(static_cast<float>(GetWindowPtr()->GetWidth() - info_width_) / 2.f, 15.f);
 
-  white_square_color = sf::Color(238, 238, 215, 255);
-  black_square_color = sf::Color(129, 147, 99, 255);
-
-  white_piece_color = sf::Color(248, 248, 248, 255);
-  black_piece_color = sf::Color(85, 83, 82, 255);
-
-  current_square_color = sf::Color(247, 82, 82, 100);
-  possible_move_square_color = sf::Color(201, 22, 22, 100);
-
   DrawBoard(board_texture_);
 
   move_pool_ = game_.GetBoard().GetAllLegalMoves(game_.GetCurrentlyMoving());
@@ -49,6 +41,7 @@ void GameScene::Draw(const sf::RenderWindow & window, sf::RenderTexture & textur
   DrawPieces(pieces_texture_);
   DrawFloatingPiece(pieces_texture_,
                     sf::Vector2f(sf::Mouse::getPosition(window)) - board_position_);
+  Animate(pieces_texture_);
   pieces_texture_.display();
 
   moves_texture_.clear(transparent);
@@ -87,14 +80,25 @@ Position GameScene::GetPositionFromMouse(const sf::RenderWindow & window) const 
 }
 
 
+sf::Vector2f GameScene::GetCoordsFromPosition(const Position & pos) const {
+  return sf::Vector2f(sf::Vector2<size_t>(pos.GetY() * square_size_, (7 - pos.GetX()) * square_size_));
+}
+
+
 void GameScene::HandleEvent(sf::RenderWindow & window, sf::Event & evt) {
+  {
+    std::lock_guard guard(animation_mutex_);
+    if (animation_state_ == AnimationState::kGoing)
+      return;
+  }
+
   if (evt.type == sf::Event::KeyPressed) {
-    if (evt.key.code == sf::Keyboard::Space) {
+    if (evt.key.code == sf::Keyboard::Space) { // If a bot is to move than it does
       if ((game_.GetCurrentlyMoving() == PieceColor::kWhite && white_human_player_ == nullptr) ||
           (game_.GetCurrentlyMoving() == PieceColor::kBlack && black_human_player_ == nullptr))
-        move_finished_ = true;
+        move_entered_ = true;
       return;
-    } else if (evt.key.code == sf::Keyboard::Backspace) {
+    } else if (evt.key.code == sf::Keyboard::Backspace) { // Roll back last move
       if (!game_.GetMoveHistory().empty()) {
         game_.GoBack();
         sequential_move_in_progress_ = false;
@@ -143,7 +147,7 @@ void GameScene::HandleEvent(sf::RenderWindow & window, sf::Event & evt) {
           std::shared_ptr<Human> & human_player_ptr = game_.GetCurrentlyMoving() == PieceColor::kWhite ?
                                                       white_human_player_ : black_human_player_;
           human_player_ptr->SetNextMove(move);
-          move_finished_ = true;
+          move_entered_ = true;
           possible_moves_.clear();
           chosen_piece_ = nullptr;
           return;
@@ -189,10 +193,35 @@ void GameScene::HandleEvent(sf::RenderWindow & window, sf::Event & evt) {
 
 
 void GameScene::HandleLogic(sf::RenderWindow & window) {
-  if (move_finished_) {
-    move_finished_ = false;
+  if (move_entered_) {
+
+    bool finished = false;
+
+    {
+      std::lock_guard<std::mutex> animation_guard(animation_mutex_);
+
+      if (animation_state_ == AnimationState::kGoing)
+        return;
+
+      if (animation_state_ == AnimationState::kFinished) {
+        animation_state_ = AnimationState::kIdle;
+        finished = true;
+      } else if (!IsOneCurrentlyMovingHuman() && animation_state_ == AnimationState::kIdle) {
+        SetUpAnimation();
+        return;
+      }
+
+    }
+
+    move_entered_ = false;
     sequential_move_in_progress_ = false;
+
     game_.Proceed();
+
+    {
+      std::lock_guard<std::mutex> animation_guard(animation_mutex_);
+      animated_piece_ = nullptr;
+    }
 
     if (game_.IsRunning())
       move_pool_ = game_.GetBoard().GetAllLegalMoves(game_.GetCurrentlyMoving());
@@ -208,11 +237,34 @@ void GameScene::HandleLogic(sf::RenderWindow & window) {
 }
 
 
+float GameScene::GetMoveTime(const Move & move) const {
+  float dx = static_cast<float>(move.GetStartPosition().GetX()) -
+             static_cast<float>(move.GetEndPosition().GetX());
+  float dy = static_cast<float>(move.GetStartPosition().GetY()) -
+             static_cast<float>(move.GetEndPosition().GetY());
+
+  return sqrt(dx * dx + dy * dy) / animated_move_speed_;
+}
+
+
+void GameScene::SetUpAnimation() {
+  // already under mutex guard from context (invariant)
+  animation_state_ = AnimationState::kGoing;
+  animated_move_ = game_.GetNextMove();
+  animated_currently_moving_ = animated_move_.GetIntermediatePositions().empty() ?
+      animated_move_ : animated_move_.RemoveFirstStep();
+  animation_start_time_ = std::chrono::steady_clock::now();
+  animated_move_time_ = GetMoveTime(animated_currently_moving_);
+  animated_piece_ = game_.GetBoard()[animated_currently_moving_.GetStartPosition()].GetPiece();
+  assert(animated_piece_ != nullptr);
+}
+
+
 void GameScene::DrawBoard(sf::Texture & texture) {
   auto *pixels = new sf::Uint8[4 * board_size_ * board_size_];
   for (size_t x = 0; x < board_size_; x += square_size_) {
     for (size_t y = 0; y < board_size_; y += square_size_) {
-      sf::Color color = ((7 - x / square_size_) + y / square_size_) % 2 == 0 ? black_square_color : white_square_color;
+      sf::Color color = ((7 - x / square_size_) + y / square_size_) % 2 == 0 ? black_square_color_ : white_square_color_;
       for (size_t i = x; i < x + square_size_; ++i) {
         for (size_t j = y; j < y + square_size_; ++j) {
           size_t ind = (i * board_size_ + j) * 4;
@@ -233,8 +285,8 @@ void GameScene::DrawPiece(sf::RenderTexture & texture,
                           const std::shared_ptr<Piece> & piece,
                           sf::Vector2f top_left_corner) {
   sf::CircleShape shape(static_cast<float>(square_size_) / 2.f - 10);
-  shape.setFillColor(piece->GetColor() == PieceColor::kWhite ? white_piece_color : black_piece_color);
-  shape.setOutlineColor(piece->GetColor() == PieceColor::kWhite ? black_piece_color : white_piece_color);
+  shape.setFillColor(piece->GetColor() == PieceColor::kWhite ? white_piece_color_ : black_piece_color_);
+  shape.setOutlineColor(piece->GetColor() == PieceColor::kWhite ? black_piece_color_ : white_piece_color_);
   shape.setOutlineThickness(3.f);
   float position = (static_cast<float>(square_size_) - shape.getRadius() * 2.f) / 2.f;
   sf::Vector2f screen_pos(position, position);
@@ -255,17 +307,26 @@ void GameScene::DrawPiece(sf::RenderTexture & texture,
 
 
 void GameScene::DrawPieces(sf::RenderTexture & texture) {
-  std::lock_guard<std::mutex> guard_piece(chosen_piece_mutex_);
+  std::vector<Position> ignoring_positions;
+
+  {
+    std::lock_guard<std::mutex> guard_piece(chosen_piece_mutex_);
+    if (chosen_piece_ != nullptr)
+      ignoring_positions.push_back(chosen_piece_->GetPosition());
+  }
+  {
+    std::lock_guard<std::mutex> guard_animation(animation_mutex_);
+    if (animation_state_ == AnimationState::kGoing)
+      ignoring_positions.push_back(animated_piece_->GetPosition());
+  }
 
   for (size_t index = 0; index < 32; ++index) {
     Position pos(index);
-    sf::Vector2f top_left_corner(static_cast<float>(pos.GetY() * square_size_),
-                                 static_cast<float>((7 - pos.GetX()) * square_size_));
     if (game_.GetBoard()[pos].IsEmpty() ||
-        (chosen_piece_ != nullptr && chosen_piece_->GetPosition() == pos))
+        std::count(ignoring_positions.begin(), ignoring_positions.end(), pos) > 0)
       continue;
     std::shared_ptr<Piece> piece = game_.GetBoard()[pos].GetPiece();
-    DrawPiece(texture, piece, top_left_corner);
+    DrawPiece(texture, piece, GetCoordsFromPosition(pos));
   }
 }
 
@@ -280,12 +341,8 @@ void GameScene::DrawFloatingPiece(sf::RenderTexture &texture, sf::Vector2f relat
 void GameScene::DrawSquareInColor(sf::RenderTexture & texture,
                                   const Position & position,
                                   const sf::Color & color) const {
-  sf::Vector2f top_left_corner(
-        static_cast<float>(position.GetY() * square_size_),
-        static_cast<float>((7 - position.GetX()) * square_size_)
-      );
   sf::RectangleShape rect(sf::Vector2f(sf::Vector2u(square_size_, square_size_)));
-  rect.setPosition(top_left_corner);
+  rect.setPosition(GetCoordsFromPosition(position));
   rect.setFillColor(color);
   texture.draw(rect);
 }
@@ -299,13 +356,13 @@ void GameScene::DrawPossibleMoves(sf::RenderTexture & texture) {
   {
     std::lock_guard<std::mutex> guard_piece(chosen_piece_mutex_);
     if (chosen_piece_ != nullptr)
-      DrawSquareInColor(texture, chosen_piece_->GetPosition(), current_square_color);
+      DrawSquareInColor(texture, chosen_piece_->GetPosition(), current_square_color_);
     else {
       std::vector<Move> & current_moves = (possible_moves_.empty() ? move_pool_ : possible_moves_);
       for (const Move & move : current_moves) {
         if (!visited[move.GetStartPosition().GetX()][move.GetStartPosition().GetY()]) {
           visited[move.GetStartPosition().GetX()][move.GetStartPosition().GetY()] = true;
-          DrawSquareInColor(texture, move.GetStartPosition(), current_square_color);
+          DrawSquareInColor(texture, move.GetStartPosition(), current_square_color_);
         }
       }
       return;
@@ -318,7 +375,35 @@ void GameScene::DrawPossibleMoves(sf::RenderTexture & texture) {
     if (visited[next_position.GetX()][next_position.GetY()])
       continue;
     visited[next_position.GetX()][next_position.GetY()] = true;
-    DrawSquareInColor(texture, next_position, possible_move_square_color);
+    DrawSquareInColor(texture, next_position, possible_move_square_color_);
+  }
+}
+
+
+void GameScene::Animate(sf::RenderTexture & texture) {
+  std::lock_guard<std::mutex> guard(animation_mutex_);
+  if (animation_state_ != AnimationState::kGoing)
+    return;
+  auto ms_passed = static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - animation_start_time_
+      ).count());
+  if (ms_passed > animated_move_time_) {
+    ms_passed = animated_move_time_;
+  }
+  sf::Vector2f from = GetCoordsFromPosition(animated_currently_moving_.GetStartPosition());
+  sf::Vector2f to = GetCoordsFromPosition(animated_currently_moving_.GetEndPosition());
+  sf::Vector2f lerp = from + (to - from) * (ms_passed / animated_move_time_);
+  DrawPiece(texture, animated_piece_, lerp);
+
+  if (FloatsEqual(ms_passed, animated_move_time_)) {
+    if (animated_move_ == animated_currently_moving_) {
+      animation_state_ = AnimationState::kFinished;
+      return;
+    }
+    animated_currently_moving_ = animated_move_.GetIntermediatePositions().empty() ?
+        animated_move_ : animated_move_.RemoveFirstStep();
+    animated_move_time_ = GetMoveTime(animated_currently_moving_);
+    animation_start_time_ = std::chrono::steady_clock::now();
   }
 }
 

@@ -38,7 +38,14 @@ class Move {
   }
 
   friend Move operator + (Move lhs, const Move & rhs);
-  Move& operator += (const Move & rhs) { return *this = std::move(*this + rhs); }
+  Move & operator += (const Move & rhs) { return *this = std::move(*this + rhs); }
+  bool operator == (const Move & rhs) {
+    if (piece_before_promotion_ != rhs.piece_before_promotion_)
+      return false;
+    return start_pos_ == rhs.start_pos_ && intermediate_pos_ == rhs.intermediate_pos_ &&
+        end_pos_ == rhs.end_pos_ && taken_pieces_ == rhs.taken_pieces_ &&
+        (!DoesPromotionHappen() || promotion_position_ == rhs.promotion_position_);
+  }
   Move RemoveFirstStep();
 
  private:

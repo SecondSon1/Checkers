@@ -11,6 +11,7 @@ class GameOverScene : public Scene {
   GameOverScene(PieceColor who_won, sf::Font & font, const sf::Texture & game_in_background)
                 : who_won_(who_won), font_(font), game_in_background_(game_in_background) {}
 
+ private:
   void Init() override;
 
   void Draw(const sf::RenderWindow & window, sf::RenderTexture & texture) override {

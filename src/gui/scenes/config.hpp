@@ -10,6 +10,7 @@ class ConfigScene : public Scene {
  public:
   ConfigScene(sf::Font & font) : font_(font) {}
 
+ private:
   void Init() override;
   void Draw(const sf::RenderWindow &window, sf::RenderTexture &texture) override;
   void HandleEvent(sf::RenderWindow &window, sf::Event &evt) override;

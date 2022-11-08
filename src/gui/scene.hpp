@@ -9,12 +9,6 @@ class Scene {
   Scene() : new_scene_(nullptr), should_close_(false) {}
   virtual ~Scene() = default;
 
-  // TODO: make private
-  virtual void Init() = 0;
-  virtual void Draw(const sf::RenderWindow & window, sf::RenderTexture & texture) = 0;
-  virtual void HandleEvent(sf::RenderWindow & window, sf::Event & evt) = 0;
-  virtual void HandleLogic(sf::RenderWindow & window) = 0;
-
  protected:
   void SwitchScene(std::unique_ptr<Scene> ptr) {
     new_scene_ = std::move(ptr);
@@ -28,6 +22,11 @@ class Scene {
 
  private:
   friend class Window;
+
+  virtual void Init() = 0;
+  virtual void Draw(const sf::RenderWindow & window, sf::RenderTexture & texture) = 0;
+  virtual void HandleEvent(sf::RenderWindow & window, sf::Event & evt) = 0;
+  virtual void HandleLogic(sf::RenderWindow & window) = 0;
 
   void SetWindowPtr(std::shared_ptr<Window> ptr) {
     window_ptr_ = std::move(ptr);

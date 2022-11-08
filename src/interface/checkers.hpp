@@ -22,13 +22,15 @@ class Checkers {
   Checkers(std::shared_ptr<Player> white_player, std::shared_ptr<Player> black_player, std::string config)
            : white_player_(std::move(white_player)), black_player_(std::move(black_player)),
              board_(config), state_(GameState::kRunning), last_move_intermediate_(false),
-             currently_moving_(ToLowerCase(config.back()) == 'w' ? PieceColor::kWhite : PieceColor::kBlack) {}
+             currently_moving_(ToLowerCase(config.back()) == 'w' ? PieceColor::kWhite : PieceColor::kBlack),
+             next_move_(Position(0), Position(1)), next_move_generated_(false) {}
 
   [[nodiscard]] bool IsRunning() const noexcept { return state_ == GameState::kRunning; }
   [[nodiscard]] bool IsOver() const noexcept { return state_ != GameState::kRunning; }
   [[nodiscard]] GameState GetState() const noexcept { return state_; }
   [[nodiscard]] const Board & GetBoard() const noexcept { return board_; }
   [[nodiscard]] PieceColor GetCurrentlyMoving() const noexcept { return currently_moving_; }
+  [[nodiscard]] Move GetNextMove() noexcept;
   [[nodiscard]] const std::vector<Move> & GetMoveHistory() const noexcept { return move_history_; }
 
   Move Proceed();
@@ -41,6 +43,9 @@ class Checkers {
   std::shared_ptr<Player> white_player_;
   std::shared_ptr<Player> black_player_;
   GameState state_;
+
+  bool next_move_generated_;
+  Move next_move_;
 
   std::vector<Move> move_history_;
   bool last_move_intermediate_;

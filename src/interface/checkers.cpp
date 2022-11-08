@@ -1,5 +1,15 @@
 #include "checkers.hpp"
 
+Move Checkers::GetNextMove() noexcept {
+  if (next_move_generated_)
+    return next_move_;
+
+  next_move_generated_ = true;
+  return next_move_ =
+      ((currently_moving_ == PieceColor::kWhite) ? white_player_ : black_player_)->GetNextMove(board_);
+}
+
+
 Move Checkers::Proceed() {
 
   Move move = ProceedWithIntermediateMove();
@@ -21,7 +31,9 @@ Move Checkers::ProceedWithIntermediateMove() {
   if (IsOver())
     throw GameIsOverException();
 
-  Move move = ((currently_moving_ == PieceColor::kWhite) ? white_player_ : black_player_)->GetNextMove(board_);
+  Move move = GetNextMove();
+  next_move_generated_ = false;
+
   board_.MakeMove(move);
 
   if (last_move_intermediate_)

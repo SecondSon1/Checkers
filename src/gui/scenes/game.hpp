@@ -7,23 +7,29 @@
 #include "../../player/human.hpp"
 
 
+enum class AnimationState {
+  kIdle, kGoing, kFinished
+};
+
+
 class GameScene : public Scene {
  public:
   GameScene(std::shared_ptr<Player> white_player, std::shared_ptr<Player> black_player,
             const sf::Font & font)
             : white_human_player_(std::dynamic_pointer_cast<Human>(white_player)),
-              black_human_player_(std::dynamic_pointer_cast<Human>(black_player)), move_finished_(false),
-              sequential_move_in_progress_(false),
-              game_(std::move(white_player), std::move(black_player)), font_(font) {}
+              black_human_player_(std::dynamic_pointer_cast<Human>(black_player)), move_entered_(false),
+              sequential_move_in_progress_(false), animation_state_(AnimationState::kIdle),
+              animated_move_(Position(0), Position(1)),
+              animated_currently_moving_(animated_move_), animated_move_speed_(0.01f),
+              game_(std::move(white_player), std::move(black_player)), font_(font),
+              white_square_color_(238, 238, 215, 255),
+              black_square_color_(129, 147, 99, 255),
+              white_piece_color_(248, 248, 248, 255),
+              black_piece_color_(85, 83, 82, 255),
+              current_square_color_(247, 82, 82, 100),
+              possible_move_square_color_(201, 22, 22, 100) {}
 
-  GameScene(std::shared_ptr<Player> white_player, std::shared_ptr<Player> black_player, const std::string & config,
-            const sf::Font & font)
-            : white_human_player_(std::dynamic_pointer_cast<Human>(white_player)),
-              black_human_player_(std::dynamic_pointer_cast<Human>(black_player)), move_finished_(false),
-              sequential_move_in_progress_(false),
-              game_(std::move(white_player), std::move(black_player), config),
-              font_(font) {}
-
+ private:
   void Init() override;
   void Draw(const sf::RenderWindow & window, sf::RenderTexture & texture) override;
   void HandleEvent(sf::RenderWindow & window, sf::Event &evt) override;
@@ -31,6 +37,7 @@ class GameScene : public Scene {
 
  private:
   Position GetPositionFromMouse(const sf::RenderWindow & window) const;
+  sf::Vector2f GetCoordsFromPosition(const Position & pos) const;
 
   void DrawBoard(sf::Texture & texture);
   void DrawPiece(sf::RenderTexture & texture, const std::shared_ptr<Piece>& piece, sf::Vector2f top_left_corner);
@@ -39,6 +46,17 @@ class GameScene : public Scene {
   void DrawSquareInColor(sf::RenderTexture & texture, const Position & position, const sf::Color & color) const;
   void DrawPossibleMoves(sf::RenderTexture & texture);
   void DrawInfo(sf::RenderTexture & texture);
+
+  float GetMoveTime(const Move & move) const;
+  void Animate(sf::RenderTexture & texture);
+
+  [[nodiscard]] bool IsOneCurrentlyMovingHuman() const noexcept {
+    return game_.GetCurrentlyMoving() == PieceColor::kWhite ?
+           white_human_player_ != nullptr : black_human_player_ != nullptr;
+  }
+
+ private:
+  void SetUpAnimation();
 
  private:
   sf::Font font_;
@@ -63,20 +81,29 @@ class GameScene : public Scene {
   std::vector<Move> possible_moves_;
   sf::Vector2f floating_offset_;
 
-  bool move_finished_;
+  bool move_entered_;
   bool sequential_move_in_progress_;
 
-  sf::Color white_square_color;
-  sf::Color black_square_color;
+  sf::Color white_square_color_;
+  sf::Color black_square_color_;
 
-  sf::Color white_piece_color;
-  sf::Color black_piece_color;
+  sf::Color white_piece_color_;
+  sf::Color black_piece_color_;
 
-  sf::Color current_square_color;
-  sf::Color possible_move_square_color;
+  sf::Color current_square_color_;
+  sf::Color possible_move_square_color_;
 
   std::shared_ptr<Human> white_human_player_;
   std::shared_ptr<Human> black_human_player_;
+
+  std::mutex animation_mutex_;
+  AnimationState animation_state_;
+  Move animated_move_;
+  Move animated_currently_moving_;
+  float animated_move_speed_;
+  float animated_move_time_;
+  std::shared_ptr<Piece> animated_piece_;
+  std::chrono::time_point<std::chrono::steady_clock> animation_start_time_;
 
   Checkers game_;
 };
