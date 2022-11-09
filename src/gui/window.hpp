@@ -19,6 +19,7 @@ class Window : public std::enable_shared_from_this<Window> {
 
  private:
   void DrawingThreadFunction(sf::RenderWindow & window);
+  void LogicThreadFunction(sf::RenderWindow & window);
 
  private:
   size_t width_, height_;

@@ -29,9 +29,38 @@ void Window::Run() {
 
   window_.setActive(false);
   running_ = true;
-  std::thread rendering_thread([this]() -> void {
+  std::thread drawing_thread([this]() -> void {
     DrawingThreadFunction(window_);
   });
+
+  LogicThreadFunction(window_);
+
+  drawing_thread.join();
+  window_.close();
+}
+
+void Window::DrawingThreadFunction(sf::RenderWindow & window) {
+  window.setActive(true);
+
+  while (running_) {
+    window.clear();
+
+    back_buffer_->clear(background_color_);
+    {
+      std::lock_guard<std::mutex> guard(scene_mutex_);
+      scene_ptr_->Draw(window, *back_buffer_);
+    }
+    back_buffer_->display();
+    front_buffer_.swap(back_buffer_);
+
+    sf::Sprite sprite(front_buffer_->getTexture());
+    window.draw(sprite);
+
+    window.display();
+  }
+}
+
+void Window::LogicThreadFunction(sf::RenderWindow &window) {
 
   while (running_) {
 
@@ -61,27 +90,4 @@ void Window::Run() {
 
   }
 
-  rendering_thread.join();
-  window_.close();
-}
-
-void Window::DrawingThreadFunction(sf::RenderWindow & window) {
-  window.setActive(true);
-
-  while (running_) {
-    window.clear();
-
-    back_buffer_->clear(background_color_);
-    {
-      std::lock_guard<std::mutex> guard(scene_mutex_);
-      scene_ptr_->Draw(window, *back_buffer_);
-    }
-    back_buffer_->display();
-    front_buffer_.swap(back_buffer_);
-
-    sf::Sprite sprite(front_buffer_->getTexture());
-    window.draw(sprite);
-
-    window.display();
-  }
 }

@@ -24,7 +24,7 @@ int32_t HumanBot::Evaluate(Board & board, int32_t current_color_index, int32_t a
   std::shuffle(moves.begin(), moves.end(), rng_);
 
   for (const Move & move : moves) {
-    if ((rng_() & 31) == 0)
+    if ((rng_() & 63) == 0)
       continue; // humans make mistakes so our bot has to too
 
     board.MakeMove(move);
@@ -60,7 +60,7 @@ Move HumanBot::GetNextMove(const Board & const_board) noexcept {
   for (const Move & move : our_moves) {
     board.MakeMove(move);
 
-    int32_t eval = -Evaluate(board, 1, -beta, -alpha, 4);
+    int32_t eval = -Evaluate(board, 1, -beta, -alpha, 5);
 
     if (eval > alpha) {
       alpha = eval;

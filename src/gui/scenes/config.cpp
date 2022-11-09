@@ -80,7 +80,7 @@ void ConfigScene::HandleEvent(sf::RenderWindow & window, sf::Event &evt) {
 
 
 void ConfigScene::HandleLogic(sf::RenderWindow & window) {
-  if (proceed_button_->WasPressed() && white_chosen_ != nullptr && black_chosen_ != nullptr) {
+  if (proceed_button_->WasPressed() && *white_chosen_ != nullptr && *black_chosen_ != nullptr) {
     std::shared_ptr<Player> white_player, black_player;
     size_t chosen_white = 0, chosen_black = 0;
     for (; chosen_white < 4; ++chosen_white)

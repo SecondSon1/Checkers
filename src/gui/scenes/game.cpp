@@ -16,7 +16,7 @@ void GameScene::Init() {
   board_size_ = square_size_ * 8;
 
   info_width_ = GetWindowPtr()->GetWidth() - 30;
-  info_height_ = 150;
+  info_height_ = 180;
 
   if (!board_texture_.create(board_size_, board_size_) ||
       !pieces_texture_.create(board_size_, board_size_) ||
@@ -31,10 +31,24 @@ void GameScene::Init() {
   DrawBoard(board_texture_);
 
   move_pool_ = game_.GetBoard().GetAllLegalMoves(game_.GetCurrentlyMoving());
+
+  bot_move_chosen_ = std::make_shared<std::shared_ptr<ChoiceButton>>(nullptr);
+  bot_move_choice_buttons_.push_back(std::make_shared<ChoiceButton>(
+        info_width_ - 580, 0, 580, 70, "Bot moves on space",
+        font_, bot_move_chosen_)
+      );
+  bot_move_choice_buttons_.push_back(std::make_shared<ChoiceButton>(
+      info_width_ - 580, 70 + 15, 580, 70, "Bot moves automatically",
+      font_, bot_move_chosen_)
+  );
+  *bot_move_chosen_ = bot_move_choice_buttons_[0];
+
 }
 
 
 void GameScene::Draw(const sf::RenderWindow & window, sf::RenderTexture & texture) {
+  bool waited_then_drew = waiting_for_drawing_;
+
   // padding 15 px on all sides
   sf::Color transparent(0, 0, 0, 0);
   pieces_texture_.clear(transparent);
@@ -65,6 +79,9 @@ void GameScene::Draw(const sf::RenderWindow & window, sf::RenderTexture & textur
   texture.draw(piece_sprite);
   info_sprite.setPosition(info_position_);
   texture.draw(info_sprite);
+
+  if (waited_then_drew)
+    waiting_for_drawing_ = false;
 }
 
 
@@ -76,7 +93,7 @@ Position GameScene::GetPositionFromMouse(const sf::RenderWindow & window) const 
     throw PositionOutOfBoundsException();
   size_t x = mouse_pos.x / square_size_;
   size_t y = mouse_pos.y / square_size_;
-  return {7-y, x};
+  return { 7 - y, x };
 }
 
 
@@ -86,6 +103,16 @@ sf::Vector2f GameScene::GetCoordsFromPosition(const Position & pos) const {
 
 
 void GameScene::HandleEvent(sf::RenderWindow & window, sf::Event & evt) {
+
+//  std::cout << "Event: " << bool(waiting_for_drawing_) << std::endl;
+  if (waiting_for_drawing_)
+    return;
+
+  sf::Vector2f mouse_pos_rel(sf::Mouse::getPosition(window));
+  mouse_pos_rel -= info_position_;
+  bot_move_choice_buttons_[0]->HandleEvent(evt,mouse_pos_rel);
+  bot_move_choice_buttons_[1]->HandleEvent(evt,mouse_pos_rel);
+
   {
     std::lock_guard guard(animation_mutex_);
     if (animation_state_ == AnimationState::kGoing)
@@ -93,7 +120,8 @@ void GameScene::HandleEvent(sf::RenderWindow & window, sf::Event & evt) {
   }
 
   if (evt.type == sf::Event::KeyPressed) {
-    if (evt.key.code == sf::Keyboard::Space) { // If a bot is to move than it does
+    // If a bot is to move than it does
+    if (evt.key.code == sf::Keyboard::Space && *bot_move_chosen_ == bot_move_choice_buttons_[0]) {
       if ((game_.GetCurrentlyMoving() == PieceColor::kWhite && white_human_player_ == nullptr) ||
           (game_.GetCurrentlyMoving() == PieceColor::kBlack && black_human_player_ == nullptr))
         move_entered_ = true;
@@ -193,6 +221,22 @@ void GameScene::HandleEvent(sf::RenderWindow & window, sf::Event & evt) {
 
 
 void GameScene::HandleLogic(sf::RenderWindow & window) {
+
+  if (waiting_for_drawing_) {
+    return;
+  }
+
+  if (!move_entered_) {
+    std::lock_guard<std::mutex> animation_guard(animation_mutex_);
+    if (animation_state_ == AnimationState::kIdle &&
+        !IsOneCurrentlyMovingHuman() &&
+        *bot_move_chosen_ == bot_move_choice_buttons_[1]) {
+      move_entered_ = true;
+      waiting_for_drawing_ = true;
+      return;
+    }
+  }
+
   if (move_entered_) {
 
     bool finished = false;
@@ -424,5 +468,9 @@ void GameScene::DrawInfo(sf::RenderTexture & texture) {
   text.setString(str);
   text.setCharacterSize(50);
   text.setFillColor(sf::Color::Black);
+
+  bot_move_choice_buttons_[0]->Draw(texture);
+  bot_move_choice_buttons_[1]->Draw(texture);
+
   texture.draw(text);
 }

@@ -5,6 +5,7 @@
 #include "../scene.hpp"
 #include "../../interface/checkers.hpp"
 #include "../../player/human.hpp"
+#include "buttons/choice_button.hpp"
 
 
 enum class AnimationState {
@@ -105,5 +106,10 @@ class GameScene : public Scene {
   std::shared_ptr<Piece> animated_piece_;
   std::chrono::time_point<std::chrono::steady_clock> animation_start_time_;
 
+  std::vector<std::shared_ptr<ChoiceButton>> bot_move_choice_buttons_;
+  std::shared_ptr<std::shared_ptr<ChoiceButton>> bot_move_chosen_;
+
   Checkers game_;
+
+  std::atomic<bool> waiting_for_drawing_;
 };
