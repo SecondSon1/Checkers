@@ -353,20 +353,18 @@ void GameScene::DrawPossibleMoves(sf::RenderTexture & texture) {
 
   std::vector<std::vector<bool>> visited(8, std::vector<bool>(8, false));
 
-  {
-    std::lock_guard<std::mutex> guard_piece(chosen_piece_mutex_);
-    if (chosen_piece_ != nullptr)
-      DrawSquareInColor(texture, chosen_piece_->GetPosition(), current_square_color_);
-    else {
-      std::vector<Move> & current_moves = (possible_moves_.empty() ? move_pool_ : possible_moves_);
-      for (const Move & move : current_moves) {
-        if (!visited[move.GetStartPosition().GetX()][move.GetStartPosition().GetY()]) {
-          visited[move.GetStartPosition().GetX()][move.GetStartPosition().GetY()] = true;
-          DrawSquareInColor(texture, move.GetStartPosition(), current_square_color_);
-        }
+  std::lock_guard<std::mutex> guard_piece(chosen_piece_mutex_);
+  if (chosen_piece_ != nullptr)
+    DrawSquareInColor(texture, chosen_piece_->GetPosition(), current_square_color_);
+  else {
+    std::vector<Move> & current_moves = (possible_moves_.empty() ? move_pool_ : possible_moves_);
+    for (const Move & move : current_moves) {
+      if (!visited[move.GetStartPosition().GetX()][move.GetStartPosition().GetY()]) {
+        visited[move.GetStartPosition().GetX()][move.GetStartPosition().GetY()] = true;
+        DrawSquareInColor(texture, move.GetStartPosition(), current_square_color_);
       }
-      return;
     }
+    return;
   }
 
   for (const Move & move : possible_moves_) {
@@ -392,7 +390,8 @@ void GameScene::Animate(sf::RenderTexture & texture) {
   }
   sf::Vector2f from = GetCoordsFromPosition(animated_currently_moving_.GetStartPosition());
   sf::Vector2f to = GetCoordsFromPosition(animated_currently_moving_.GetEndPosition());
-  sf::Vector2f lerp = from + (to - from) * (ms_passed / animated_move_time_);
+  float t = (ms_passed / animated_move_time_);
+  sf::Vector2f lerp = from + (to - from) * t;
   DrawPiece(texture, animated_piece_, lerp);
 
   if (FloatsEqual(ms_passed, animated_move_time_)) {
