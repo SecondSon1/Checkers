@@ -77,7 +77,7 @@ Move CalculatingBot::GetNextMove(const Board & const_board) noexcept {
   for (const Move & move : our_moves) {
     board.MakeMove(move);
 
-    int eval = -Evaluate(board, 1, -beta, -alpha, 7);
+    int eval = -Evaluate(board, 1, -beta, -alpha, 9);
 
     if (eval > alpha) {
       alpha = eval;
