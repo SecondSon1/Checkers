@@ -42,6 +42,6 @@ add_executable(Checkers src/main.cpp
         src/gui/scenes/buttons/proceed_button.hpp
         src/player/bot/calculating_bot/calculating_bot.cpp
         src/player/bot/human_bot/human_bot.cpp
-        )
+        src/player/bot/testing_bot/testing_bot.cpp src/player/bot/testing_bot/testing_bot.hpp)
 
 target_link_libraries(Checkers sfml-graphics sfml-audio)
