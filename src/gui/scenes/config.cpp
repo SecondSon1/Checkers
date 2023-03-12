@@ -127,8 +127,8 @@ void ConfigScene::HandleLogic(sf::RenderWindow & window) {
     SwitchScene(std::make_unique<GameScene>(
           std::move(white_player), std::move(black_player), font_
         ));
-    white_chosen_ = nullptr;
-    black_chosen_ = nullptr;
+    *white_chosen_ = nullptr;
+    *black_chosen_ = nullptr;
   }
 }
 

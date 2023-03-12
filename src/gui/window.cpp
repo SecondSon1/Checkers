@@ -32,10 +32,14 @@ void Window::Run() {
   std::thread drawing_thread([this]() -> void {
     DrawingThreadFunction(window_);
   });
+  std::thread logic_thread([this]() -> void {
+    LogicThreadFunction(window_);
+  });
 
-  LogicThreadFunction(window_);
+  MainThreadFunction();
 
   drawing_thread.join();
+  logic_thread.join();
   window_.close();
 }
 
@@ -64,12 +68,31 @@ void Window::LogicThreadFunction(sf::RenderWindow &window) {
 
   while (running_) {
 
+    sf::Event evt{};
+    while (!event_deque_.Empty()) {
+      evt = event_deque_.PopFront();
+      scene_ptr_->HandleEvent(window, evt);
+    }
+
+    scene_ptr_->HandleLogic(window);
+
+  }
+
+
+}
+
+
+void Window::MainThreadFunction() {
+
+  while (running_) {
+
     {
       std::lock_guard<std::mutex> guard(scene_mutex_);
       if (scene_ptr_->NewSceneAwaits()) {
-        scene_ptr_ = scene_ptr_->RetrieveNewScenePtr();
-        scene_ptr_->SetWindowPtr(shared_from_this());
-        scene_ptr_->Init();
+        std::unique_ptr<Scene> new_scene = scene_ptr_->RetrieveNewScenePtr();
+        new_scene->SetWindowPtr(shared_from_this());
+        new_scene->Init();
+        scene_ptr_.swap(new_scene);
       }
     }
 
@@ -80,10 +103,9 @@ void Window::LogicThreadFunction(sf::RenderWindow &window) {
         break;
       }
 
-      scene_ptr_->HandleEvent(window_, evt);
+      event_deque_.PushBack(evt);
     }
 
-    scene_ptr_->HandleLogic(window_);
     if (scene_ptr_->ShouldClose()) {
       running_ = false;
     }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "scene.hpp"
+#include "ts_deque.hpp"
 
 class Window : public std::enable_shared_from_this<Window> {
  public:
@@ -20,6 +21,7 @@ class Window : public std::enable_shared_from_this<Window> {
  private:
   void DrawingThreadFunction(sf::RenderWindow & window);
   void LogicThreadFunction(sf::RenderWindow & window);
+  void MainThreadFunction();
 
  private:
   size_t width_, height_;
@@ -32,4 +34,6 @@ class Window : public std::enable_shared_from_this<Window> {
 
   std::unique_ptr<sf::RenderTexture> front_buffer_;
   std::unique_ptr<sf::RenderTexture> back_buffer_;
+
+  TSDeque<sf::Event> event_deque_;
 };
