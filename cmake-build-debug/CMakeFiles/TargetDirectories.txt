@@ -1,0 +1,3 @@
+/Users/secondson/FTL/Inf/Prac/Checkers/cmake-build-debug/CMakeFiles/Checkers.dir
+/Users/secondson/FTL/Inf/Prac/Checkers/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/secondson/FTL/Inf/Prac/Checkers/cmake-build-debug/CMakeFiles/rebuild_cache.dir
