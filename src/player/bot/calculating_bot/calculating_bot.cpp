@@ -1,5 +1,6 @@
 #include "calculating_bot.hpp"
 
+constexpr int32_t EVAL_DEPTH = 9;
 
 bool CalculatingBot::MoveComparison(const Move & lhs, const Move & rhs, PieceColor color) {
   if (lhs.DoesPromotionHappen() && !rhs.DoesPromotionHappen())
@@ -73,11 +74,13 @@ Move CalculatingBot::GetNextMove(const Board & const_board) noexcept {
   int beta = 1e9;
   auto our_moves = board.GetAllLegalMoves(GetColor());
   Move resulting_move = our_moves[0];
+  if (our_moves.size() == 1)
+    return resulting_move;
 
   for (const Move & move : our_moves) {
     board.MakeMove(move);
 
-    int eval = -Evaluate(board, 1, -beta, -alpha, 9);
+    int eval = -Evaluate(board, 1, -beta, -alpha, EVAL_DEPTH);
 
     if (eval > alpha) {
       alpha = eval;

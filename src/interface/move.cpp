@@ -1,6 +1,8 @@
 #include "move.hpp"
 #include "pieces.hpp"
 
+#include <cassert>
+
 Move::Move(Position start_pos, std::initializer_list<Position> intermediate_pos,
            Position end_pos, std::initializer_list<std::shared_ptr<Piece>> taken)
            : start_pos_(start_pos), intermediate_pos_(intermediate_pos), end_pos_(end_pos), taken_pieces_(taken),

@@ -1,6 +1,8 @@
 #include "game_over.hpp"
 #include "config.hpp"
 
+#include <cassert>
+
 void GameOverScene::Init() {
   sf::Color semi_transparent(255, 255, 255, 40);
 

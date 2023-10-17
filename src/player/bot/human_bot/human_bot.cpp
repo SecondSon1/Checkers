@@ -56,6 +56,8 @@ Move HumanBot::GetNextMove(const Board & const_board) noexcept {
   int32_t beta = 1e9;
   auto our_moves = board.GetAllLegalMoves(GetColor());
   Move resulting_move = our_moves[0];
+  if (our_moves.size() == 1)
+    return resulting_move;
 
   for (const Move & move : our_moves) {
     board.MakeMove(move);

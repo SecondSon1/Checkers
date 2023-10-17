@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <cassert>
 
 constexpr int diff = static_cast<uint32_t>('a') ^ static_cast<uint32_t>('A');
 
